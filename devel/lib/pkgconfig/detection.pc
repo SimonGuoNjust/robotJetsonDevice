@@ -1,0 +1,8 @@
+prefix=/home/nvidia/ros_rosbot_ws/devel
+
+Name: detection
+Description: Description of detection
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 
