@@ -1,0 +1,18 @@
+bag_path: /home/nvidia/20221212_190754.bag
+deviceName: nvidia-robot
+camera:
+  rgbStreamWidth: 1280
+  rgbStreamHeight: 720
+  rgbStreamFPS: 30
+  depthStreamWidth: 640
+  depthStreamHeight: 480
+  depthStreamFPS: 30
+  depthEnabled: true
+  infraredEnabled: true
+ffmpeg:
+  transport: udp
+  gop_size: 10
+  b_frames: 0
+  qmin: 10
+  qmax: 50
+  bit_rate: 15000000

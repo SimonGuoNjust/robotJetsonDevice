@@ -3,12 +3,20 @@ project(detection)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
-
+set(CMAKE_CXX_STANDARD 14)
+SET(CMAKE_BUILD_TYPE "Debug")
+SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
+set(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
+enable_language(CUDA)
+set(OpenCV_DIR /usr/lib/aarch64-linux-gnu/cmake/opencv4)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  OpenCV
   std_msgs
 )
 # find_package(Boost REQUIRED COMPONENTS
@@ -16,7 +24,9 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
-
+find_package(realsense2 REQUIRED)
+find_package(realsense2-gl REQUIRED)
+find_package(vpi REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -116,26 +126,42 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
+# message(STATUS  ${PROJECT_SOURCE_DIR})
 include_directories(
 # include
+ ${PROJECT_SOURCE_DIR}/include/detection
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
+  ${realsense2_INCLUDE_DIR}
+  ${realsense2_gl_INCLUDE_DIR}
+  ${PROJECT_SOURCE_DIR}/src/yolov8/include
+  ${PROJECT_SOURCE_DIR}/src/yolov8/plugin
+  /usr/local/cuda/targets/aarch64-linux/include
+  /home/nvidia/ffmpeg/ffmpeg_install/include
 )
-
+link_directories(/usr/local/cuda/targets/aarch64-linux/lib
+/usr/lib/aarch64-linux-gnu/librt.so)
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/detection.cpp
 # )
-
+add_library(myplugins SHARED ${PROJECT_SOURCE_DIR}/src/yolov8/plugin/yololayer.cu)
+add_library(rgb2yuvcuda SHARED ${PROJECT_SOURCE_DIR}/src/rgb2yuv.cu ${PROJECT_SOURCE_DIR}/src/rgb2yuv.cuh)
+target_link_libraries(myplugins nvinfer cudart)
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
+file(GLOB_RECURSE SRCS ${PROJECT_SOURCE_DIR}/src/yolov8/src/*.cpp ${PROJECT_SOURCE_DIR}/src/yolov8/src/*.cu)
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(control_node src/control.cpp)
+add_executable(camera_node src/camera.cpp)
+add_executable(model_node src/model.cpp 
+src/yolov8/yolov8_det.cpp
+${SRCS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -151,6 +177,30 @@ add_executable(control_node src/control.cpp)
 target_link_libraries(control_node
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
+    "/usr/lib/aarch64-linux-gnu/librt.so"
+)
+
+target_link_libraries(camera_node
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+    "/usr/lib/aarch64-linux-gnu/librt.so"
+  rgb2yuvcuda
+  realsense2
+realsense2-gl
+"/home/nvidia/ffmpeg/ffmpeg_install/lib/libavcodec.so"
+  "/home/nvidia/ffmpeg/ffmpeg_install/lib/libavformat.so"
+  "/home/nvidia/ffmpeg/ffmpeg_install/lib/libavutil.so"
+  "/home/nvidia/ffmpeg/ffmpeg_install/lib/libswscale.so"
+)
+
+target_link_libraries(model_node
+${catkin_LIBRARIES}
+${OpenCV_LIBRARIES}
+  "/usr/lib/aarch64-linux-gnu/librt.so"
+nvinfer
+cudart
+myplugins
 )
 
 #############
