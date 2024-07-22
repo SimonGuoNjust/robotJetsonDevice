@@ -18,7 +18,19 @@
 #include <boost/thread/thread.hpp>
 #include <chrono>
 #include "sharedMemory.h"
-  
+#include "model_infer.h"
+#include <boost/asio.hpp>
+#include <boost/bind/bind.hpp>
+#include <boost/thread/thread.hpp> 
+#include <boost/thread/mutex.hpp> 
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/common/common.h>
+// #include <pcl/filters/passthrough.h>
+#include <pcl/compression/octree_pointcloud_compression.h>
+
+#include <cuda_runtime.h>
+#include <cudaFilter.h>
 extern "C" {
     #include <libavcodec/avcodec.h>
     #include <libavformat/avformat.h>
@@ -27,6 +39,14 @@ extern "C" {
     #include <libavutil/opt.h>
 }
 using namespace std;
+using boost::asio::ip::tcp;
+
+typedef pcl::PointXYZ PointT;
+typedef pcl::PointXYZRGB PointTRGB;
+typedef pcl::PointCloud<PointT> PointCloudT;
+typedef pcl::PointCloud<PointTRGB> PointCloudRGB;
+typedef PointCloudRGB::Ptr PointCloudRGB_ptr;
+typedef PointCloudT::Ptr PointCloudT_ptr;
 
 class RealsenseContext
 {
@@ -89,17 +109,38 @@ public:
 
 private:
     void draw_results(cv::Mat& img);
+    void draw_results(std::vector<Detection>& res, cv::Mat& img);
+    void tcp_accept_handler(const boost::system::error_code& ec);
+    bool tcp_connected = false;
+    void init_cudaFilter(uint32_t width, uint32_t height);
+    void cuda_filter_cloud();
+    void convert2PCL(const rs2::points&);
+    void encode_pointcloud(tcp::iostream* socketStream);
+
     std::unique_ptr<RealsenseContext> rs_ctx;
+    std::shared_ptr<pcl::io::OctreePointCloudCompression<PointT>> pc_compressor;
+      
     cv::Mat yuv_mat;
+    cv::Mat frame;
     bool modelComplete = false;
     bool modelReady = false;
     char detectedResult[2000];
+    std::shared_ptr<YOLOv8ImageInferencer> detector;
     AVFormatContext *m_fmt_ctx;
     AVCodecContext *m_codec_ctx;
     AVPacket *srcPkt;
     AVPacket *desPkt;
     AVFrame *srcFrame;
     AVFrame *desFrame;
+
+    cudaStream_t cuda_stream = NULL;
+    PointCloudT_ptr cloud_src;
+    PointCloudT_ptr cloud_dst;
+    float* device_input_mem_ptr = NULL;
+    float* device_output_mem_ptr = NULL;
+    std::shared_ptr<cudaFilter> cudaFilter_ptr = NULL;
+    bool pointcloud_update = false;
+    boost::mutex lock;
 };
 
 

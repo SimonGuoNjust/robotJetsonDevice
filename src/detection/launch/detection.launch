@@ -6,6 +6,6 @@
     <!-- run turtle_teleop_key.launch -->
     <node pkg="detection" type="camera_node" name="camera_node" output="screen">
     </node>
-    <node pkg="detection" type="model_node" name="model_node" output="screen">
-    </node>
+    <!-- <node pkg="detection" type="model_node" name="model_node" output="screen">
+    </node> -->
 </launch>

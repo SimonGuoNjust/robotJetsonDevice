@@ -185,6 +185,20 @@ void YOLOv8ImageInferencer::inferOneImage(cv::Mat& img)
         // std::cout << res.size() << std::endl;
     }
 
+void YOLOv8ImageInferencer::inferOneImage(std::vector<Detection>& res, cv::Mat& img)
+    {   
+        int dst_size = kInputW * kInputH * 3;
+        cuda_preprocess(img.ptr(), img.cols, img.rows, &device_buffers[0][0], kInputW,
+                        kInputH, stream);
+        CUDA_CHECK(cudaStreamSynchronize(stream));
+
+        infer(*context, stream, (void**)device_buffers, output_buffer_host, kBatchSize, decode_ptr_host,
+              decode_ptr_device, model_bboxes, cuda_post_process);
+        int count = static_cast<int>(*decode_ptr_host);
+        process_decode_ptr_host(res, &decode_ptr_host[0], bbox_element, img, count);
+        // std::cout << res.size() << std::endl;
+    }
+
 YOLOv8ImageInferencer::~YOLOv8ImageInferencer()
     {
         cudaStreamDestroy(stream);

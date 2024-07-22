@@ -25,5 +25,6 @@ public:
     float* decode_ptr_host = nullptr;
     YOLOv8ImageInferencer(std::string model_path);
     void inferOneImage(cv::Mat& img);
+    void inferOneImage(std::vector<Detection>& res, cv::Mat& img);
     ~YOLOv8ImageInferencer();
 };

@@ -26,7 +26,9 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(realsense2 REQUIRED)
 find_package(realsense2-gl REQUIRED)
-find_package(vpi REQUIRED)
+# find_package(vpi REQUIRED)
+set(PCL_DIR "/home/nvidia/customLib/pcl/share/pcl-1.13")   # PCLConfig.cmake所在的文件夹
+find_package(PCL 1.13.0 REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -133,12 +135,14 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
   ${realsense2_INCLUDE_DIR}
   ${realsense2_gl_INCLUDE_DIR}
   ${PROJECT_SOURCE_DIR}/src/yolov8/include
   ${PROJECT_SOURCE_DIR}/src/yolov8/plugin
   /usr/local/cuda/targets/aarch64-linux/include
   /home/nvidia/ffmpeg/ffmpeg_install/include
+  /home/nvidia/cuPCL/cuFilter/lib
 )
 link_directories(/usr/local/cuda/targets/aarch64-linux/lib
 /usr/lib/aarch64-linux-gnu/librt.so)
@@ -146,6 +150,9 @@ link_directories(/usr/local/cuda/targets/aarch64-linux/lib
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/detection.cpp
 # )
+
+add_definitions(${PCL_DEFINITIONS})
+file(GLOB PCL_LIBRARIES /home/nvidia/customLib/pcl/lib/libpcl_*)
 add_library(myplugins SHARED ${PROJECT_SOURCE_DIR}/src/yolov8/plugin/yololayer.cu)
 add_library(rgb2yuvcuda SHARED ${PROJECT_SOURCE_DIR}/src/rgb2yuv.cu ${PROJECT_SOURCE_DIR}/src/rgb2yuv.cuh)
 target_link_libraries(myplugins nvinfer cudart)
@@ -158,7 +165,7 @@ file(GLOB_RECURSE SRCS ${PROJECT_SOURCE_DIR}/src/yolov8/src/*.cpp ${PROJECT_SOUR
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(control_node src/control.cpp)
-add_executable(camera_node src/camera.cpp)
+add_executable(camera_node src/camera.cpp src/yolov8/yolov8_det.cpp ${SRCS})
 add_executable(model_node src/model.cpp 
 src/yolov8/yolov8_det.cpp
 ${SRCS})
@@ -187,11 +194,17 @@ target_link_libraries(camera_node
     "/usr/lib/aarch64-linux-gnu/librt.so"
   rgb2yuvcuda
   realsense2
-realsense2-gl
-"/home/nvidia/ffmpeg/ffmpeg_install/lib/libavcodec.so"
+  realsense2-gl
+  "/home/nvidia/ffmpeg/ffmpeg_install/lib/libavcodec.so"
   "/home/nvidia/ffmpeg/ffmpeg_install/lib/libavformat.so"
   "/home/nvidia/ffmpeg/ffmpeg_install/lib/libavutil.so"
   "/home/nvidia/ffmpeg/ffmpeg_install/lib/libswscale.so"
+  "/home/nvidia/cuPCL/cuFilter/lib/libcudafilter.so"
+  nvinfer
+  cudart
+  myplugins
+  
+  ${PCL_LIBRARIES}
 )
 
 target_link_libraries(model_node
